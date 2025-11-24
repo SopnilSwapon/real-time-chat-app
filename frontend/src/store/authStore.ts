@@ -9,6 +9,7 @@ export interface IAuthUser {
   fullName: string;
   email: string;
   profilePic?: string;
+  createdAt: string;
 }
 
 export interface IAuthState {
@@ -22,6 +23,7 @@ export interface IAuthState {
   signup: (data: TSignUpFormData) => Promise<void>;
   login: (data: TLoginFormData) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (data: FormData) => Promise<void>;
   connectSocket: () => void;
 }
 export const authStore = createStore<IAuthState>((set, get) => ({
@@ -85,6 +87,21 @@ export const authStore = createStore<IAuthState>((set, get) => ({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast.error(error.response.data.message || "Something is wrong!");
+    }
+  },
+
+  updateProfile: async (data) => {
+    set({ isUpdatingProfile: true });
+    try {
+      const res = await axiosInstance.put("/auth/update-profile", data);
+      set({ authUser: res.data });
+      toast.success("Profile updated successfully");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.log("error in update profile:", error);
+      toast.error(error.response.data.message);
+    } finally {
+      set({ isUpdatingProfile: false });
     }
   },
 
