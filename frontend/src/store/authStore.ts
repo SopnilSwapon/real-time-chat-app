@@ -1,7 +1,8 @@
 import { createStore } from "zustand/vanilla";
 import { axiosInstance } from "../lib/axios";
-import toast from "react-hot-toast";
 import type { TSignUpFormData } from "../pages/SignUpPage";
+import type { TLoginFormData } from "../pages/LoginPage";
+import { toast } from "react-toastify";
 
 export interface IAuthUser {
   _id: string;
@@ -19,6 +20,7 @@ export interface IAuthState {
 
   checkAuth: () => Promise<void>;
   signup: (data: TSignUpFormData) => Promise<void>;
+  login: (data: TLoginFormData) => Promise<void>;
   logout: () => Promise<void>;
   connectSocket: () => void;
 }
@@ -40,6 +42,7 @@ export const authStore = createStore<IAuthState>((set, get) => ({
       set({ isCheckingAuth: false });
     }
   },
+
   signup: async (data) => {
     set({ isSigningUp: true });
     try {
@@ -56,15 +59,35 @@ export const authStore = createStore<IAuthState>((set, get) => ({
       set({ isSigningUp: false });
     }
   },
+
+  login: async (data) => {
+    set({ isLoggingIn: true });
+    try {
+      const res = await axiosInstance.post("/auth/login", data);
+      set({ authUser: res.data });
+      toast.success("Logged in successfully");
+
+      get().connectSocket();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.log(error, "check user error of login");
+      toast.error(error.response.data.message);
+    } finally {
+      set({ isLoggingIn: false });
+    }
+  },
+
   logout: async () => {
     try {
       await axiosInstance.post("/auth/logout");
       set({ authUser: null });
+      toast.success("Logged out successfully");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      toast.error(error?.message || "Something is wrong!");
+      toast.error(error.response.data.message || "Something is wrong!");
     }
   },
+
   connectSocket: () => {
     // Placeholder: implement socket initialization here when socket utility is available
   },
