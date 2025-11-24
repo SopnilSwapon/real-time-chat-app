@@ -5,8 +5,11 @@ import SignUpPage from "./pages/SignUpPage";
 import LoginPage from "./pages/LoginPage";
 import SettingPage from "./pages/SettingPage";
 import ProfilePage from "./pages/ProfilePage";
+import { useAuthStore } from "./store/useAuthStore";
 
 export default function App() {
+  const {authUser, checkAuth} = useAuthStore();
+  console.log(authUser, 'check the auth user data')
   return (
     <div className='text-2xl text-red-600'>
        <Navbar/>
