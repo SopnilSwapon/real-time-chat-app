@@ -23,7 +23,7 @@ export interface IAuthState {
   signup: (data: TSignUpFormData) => Promise<void>;
   login: (data: TLoginFormData) => Promise<void>;
   logout: () => Promise<void>;
-  updateProfile: (data: FormData) => Promise<void>;
+  updateProfile: (data: { profilePic: string }) => Promise<void>;
   connectSocket: () => void;
 }
 export const authStore = createStore<IAuthState>((set, get) => ({
@@ -90,7 +90,7 @@ export const authStore = createStore<IAuthState>((set, get) => ({
     }
   },
 
-  updateProfile: async (data) => {
+  updateProfile: async (data: { profilePic: string }) => {
     set({ isUpdatingProfile: true });
     try {
       const res = await axiosInstance.put("/auth/update-profile", data);

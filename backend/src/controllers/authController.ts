@@ -83,9 +83,11 @@ export const updateProfile = async (req, res) => {
     const { profilePic } = req.body;
     console.log(profilePic, "check profile picture");
     const userId = req.user._id;
+    console.log(profilePic, userId, "check whats wrong");
     if (!profilePic) {
       return res.status(400).json({ message: "Profile picture is required" });
     }
+
     const uploadRes = await cloudinary.uploader.upload(profilePic);
     const updateUser = await User.findByIdAndUpdate(
       userId,

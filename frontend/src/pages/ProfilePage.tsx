@@ -16,16 +16,13 @@ const ProfilePage = () => {
     const reader = new FileReader();
 
     reader.readAsDataURL(file);
-
     reader.onload = async () => {
       const result = reader.result;
-      // FileReader.readAsDataURL() yields a string result (data URL), guard the type
       if (typeof result !== "string") return;
+
       setSelectedImg(result);
-      // Use FormData and append the original File so the API receives multipart/form-data
-      const formData = new FormData();
-      formData.append("profilePic", file);
-      await updateProfile(formData);
+
+      await updateProfile({ profilePic: result }); // send JSON, not FormData
     };
   };
 
