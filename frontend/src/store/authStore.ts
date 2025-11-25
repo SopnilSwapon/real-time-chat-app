@@ -52,7 +52,6 @@ export const authStore = createStore<IAuthState>((set, get) => ({
       set({ authUser: res.data });
       toast.success("Account created successfully");
       get().connectSocket();
-      console.log(res, "check the res", res.data);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.log(error, "check error");
