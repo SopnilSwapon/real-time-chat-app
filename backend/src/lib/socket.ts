@@ -15,7 +15,7 @@ export function getReceiverSocketId(userId) {
   return userSocketMap[userId];
 }
 
-// Used to store online users. Map userId -> Set of socketIds to support multi-device sessions
+// Used to store online users.
 const userSocketMap: { [userId: string]: Set<string> } = {};
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
@@ -43,7 +43,7 @@ io.on("connection", (socket) => {
     )
   );
 
-  // Support explicit register event from client (more reliable than relying on query)
+  // Support explicit register event from client
   socket.on("register", (id: string) => {
     let rid = id;
     if (Array.isArray(rid)) rid = rid[0];
