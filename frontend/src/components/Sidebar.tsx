@@ -33,6 +33,7 @@ export default function Sidebar() {
           />
           <span className="text-sm">Show online only</span>
         </label>
+        <span className="text-sm">({onlineUsers!.length - 1} online)</span>
       </div>
       <div className="overflow-y-auto py-3">
         {filteredUsers?.map((user) => (
