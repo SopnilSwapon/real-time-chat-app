@@ -11,6 +11,10 @@ const io = new Server(server, {
   },
 });
 
+export function getReceiverSocketId(userId) {
+  return userSocketMap[userId];
+}
+
 // Used to store online users. Map userId -> Set of socketIds to support multi-device sessions
 const userSocketMap: { [userId: string]: Set<string> } = {};
 io.on("connection", (socket) => {
@@ -32,7 +36,12 @@ io.on("connection", (socket) => {
     userSocketMap[userId].add(socket.id);
   }
 
-  console.log("userSocketMap after connect:", Object.fromEntries(Object.entries(userSocketMap).map(([k, v]) => [k, Array.from(v)])));
+  console.log(
+    "userSocketMap after connect:",
+    Object.fromEntries(
+      Object.entries(userSocketMap).map(([k, v]) => [k, Array.from(v)])
+    )
+  );
 
   // Support explicit register event from client (more reliable than relying on query)
   socket.on("register", (id: string) => {
@@ -67,7 +76,12 @@ io.on("connection", (socket) => {
       }
     });
 
-    console.log("userSocketMap after disconnect:", Object.fromEntries(Object.entries(userSocketMap).map(([k, v]) => [k, Array.from(v)])));
+    console.log(
+      "userSocketMap after disconnect:",
+      Object.fromEntries(
+        Object.entries(userSocketMap).map(([k, v]) => [k, Array.from(v)])
+      )
+    );
 
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   });

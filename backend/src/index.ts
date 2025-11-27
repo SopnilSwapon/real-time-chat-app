@@ -5,7 +5,7 @@ import dotenv from "dotenv";
 import { connectDB } from "./lib/db";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import { app, server } from "./controllers/socket";
+import { app, server } from "./lib/socket";
 
 dotenv.config();
 
