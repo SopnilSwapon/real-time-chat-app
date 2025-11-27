@@ -26,7 +26,7 @@ const LoginPage = () => {
       navigate("/"); // only runs if login SUCCESS
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      console.log(error);
+      console.log(error, "check the error from login client");
       // do nothing — error already handled in the store
     }
   };

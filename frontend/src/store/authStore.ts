@@ -118,9 +118,23 @@ export const authStore = createStore<IAuthState>((set, get) => ({
     const socket = io(BASE_URL, { query: { userId: authUser._id } });
     socket.connect();
     set({ socket: socket });
+    // explicitly register with the server (more reliable than query in some environments)
+    socket.emit("register", authUser._id);
     socket.on("getOnlineUsers", (userIds) => {
+      console.log(userIds, "check user ids from client side");
       set({ onlineUsers: userIds });
     });
   },
-  disconnectSocket: () => {},
+  disconnectSocket: () => {
+    const socket = get().socket;
+    if (!socket) return;
+    // remove listener(s)
+    socket.off("getOnlineUsers");
+    try {
+      socket.disconnect();
+    } catch {
+      // ignore
+    }
+    set({ socket: null, onlineUsers: [] });
+  },
 }));
