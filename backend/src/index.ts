@@ -17,8 +17,11 @@ app.use(
     origin: [
       "http://localhost:5173",
       "https://real-time-chat-app-1-0-iv2t.onrender.com",
+      "https://real-time-chat-app-005.onrender.com",
     ],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
