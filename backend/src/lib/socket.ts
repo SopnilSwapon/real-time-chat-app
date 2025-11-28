@@ -16,6 +16,11 @@ const io = new Server(server, {
   },
 });
 
+io.engine.on("headers", (headers, req) => {
+  headers["Access-Control-Allow-Origin"] = req.headers.origin;
+  headers["Access-Control-Allow-Credentials"] = "true";
+});
+
 // online users map
 const userSocketMap: Record<string, Set<string>> = {};
 
