@@ -14,14 +14,10 @@ const port = process.env.PORT || 3001;
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://real-time-chat-app-1-0-iv2t.onrender.com",
-      "https://real-time-chat-app-005.onrender.com",
-    ],
+    origin: (origin, callback) => {
+      callback(null, true); // Allow all origins
+    },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
