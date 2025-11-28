@@ -41,22 +41,65 @@ export const signup = async (req, res) => {
   }
 };
 
+// export const login = async (req, res) => {
+//   const { email, password } = req.body;
+//   console.log("📥 LOGIN HIT:", req.body);
+//   try {
+//     if (!email || !password) {
+//       return res.status(400).json({ message: "All fields are required" });
+//     }
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//       return res.status(400).json({ message: "Invalid credentials" });
+//     }
+//     const isPasswordMatch = await bcrypt.compare(password, user.password);
+//     if (!isPasswordMatch) {
+//       return res.status(400).json({ message: "Invalid credentials" });
+//     }
+//     generateToken(user._id, res);
+//     res.status(200).json({
+//       _id: user._id,
+//       fullName: user.fullName,
+//       email: user.email,
+//       profilePic: user.profilePic,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ message: "Internal server error" });
+//   }
+// };
+
 export const login = async (req, res) => {
   const { email, password } = req.body;
+
   console.log("📥 LOGIN HIT:", req.body);
+
   try {
     if (!email || !password) {
+      console.log("❌ Missing fields");
       return res.status(400).json({ message: "All fields are required" });
     }
+
+    console.log("🔍 Searching user:", email);
     const user = await User.findOne({ email });
+
     if (!user) {
+      console.log("❌ User not found:", email);
       return res.status(400).json({ message: "Invalid credentials" });
     }
+
+    console.log("🔐 Comparing password...");
     const isPasswordMatch = await bcrypt.compare(password, user.password);
+
     if (!isPasswordMatch) {
+      console.log("❌ Password mismatch for:", email);
       return res.status(400).json({ message: "Invalid credentials" });
     }
+
+    console.log("✅ Password correct, generating token...");
     generateToken(user._id, res);
+
+    console.log("🚀 LOGIN SUCCESS:", user._id);
+
     res.status(200).json({
       _id: user._id,
       fullName: user.fullName,
@@ -64,6 +107,7 @@ export const login = async (req, res) => {
       profilePic: user.profilePic,
     });
   } catch (error) {
+    console.log("🔥 LOGIN ERROR:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
