@@ -11,6 +11,13 @@ import path from "path";
 dotenv.config();
 
 const port = process.env.PORT || 3001;
+process.on("uncaughtException", (err) => {
+  console.error("🔥 UNCAUGHT ERROR:", err);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("🔥 UNHANDLED PROMISE REJECTION:", err);
+});
 
 app.use(
   cors({
