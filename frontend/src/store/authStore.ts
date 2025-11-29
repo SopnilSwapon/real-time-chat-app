@@ -142,37 +142,82 @@ export const authStore = createStore<IAuthState>((set, get) => ({
     // -----------------------
 
     // Incoming call offer
+    // socket.on("incoming-call", async ({ from, offer }) => {
+    //   console.log("📞 Incoming call from", from);
+    //   const { setIncomingCall, setCallerId, setPeerConnection } =
+    //     callStore.getState();
+
+    //   const pc = new RTCPeerConnection({
+    //     iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+    //   });
+
+    //   // Set global peer connection
+    //   setPeerConnection(pc);
+
+    //   // Save call details
+    //   setIncomingCall(true);
+    //   setCallerId(from);
+
+    //   // Get microphone stream
+    //   const stream = await navigator.mediaDevices.getUserMedia({
+    //     audio: true,
+    //   });
+    //   stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+
+    //   // Incoming remote audio
+    //   pc.ontrack = (event) => {
+    //     const audio = document.getElementById(
+    //       "remoteAudio"
+    //     ) as HTMLAudioElement;
+    //     audio.srcObject = event.streams[0];
+    //     audio.play();
+    //   };
+
+    //   pc.onicecandidate = (event) => {
+    //     if (event.candidate) {
+    //       socket.emit("ice-candidate", {
+    //         to: from,
+    //         candidate: event.candidate,
+    //       });
+    //     }
+    //   };
+
+    //   await pc.setRemoteDescription(offer);
+    // });
     socket.on("incoming-call", async ({ from, offer }) => {
       console.log("📞 Incoming call from", from);
-      const { setIncomingCall, setCallerId, setPeerConnection } =
-        callStore.getState();
+
+      const { receiveCall, setPeerConnection } = callStore.getState();
+
+      // UI + ringtone
+      receiveCall(from);
 
       const pc = new RTCPeerConnection({
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       });
 
-      // Set global peer connection
+      // storage for early ICE candidates
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (pc as any)._queuedCandidates = [];
+
       setPeerConnection(pc);
 
-      // Save call details
-      setIncomingCall(true);
-      setCallerId(from);
-
-      // Get microphone stream
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
+      // Add microphone stream
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
 
-      // Incoming remote audio
+      // Remote audio handler
       pc.ontrack = (event) => {
         const audio = document.getElementById(
           "remoteAudio"
-        ) as HTMLAudioElement;
-        audio.srcObject = event.streams[0];
-        audio.play();
+        ) as HTMLAudioElement | null;
+        if (audio) {
+          audio.srcObject = event.streams[0];
+          audio.play().catch(() => {}); // prevent autoplay crash
+        }
       };
 
+      // ICE candidate handler
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           socket.emit("ice-candidate", {
@@ -182,7 +227,19 @@ export const authStore = createStore<IAuthState>((set, get) => ({
         }
       };
 
+      // --- Set remote offer ---
       await pc.setRemoteDescription(offer);
+
+      // ---- Process queued candidates ----
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((pc as any)._queuedCandidates.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        for (const c of (pc as any)._queuedCandidates) {
+          await pc.addIceCandidate(c).catch(console.error);
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (pc as any)._queuedCandidates = [];
+      }
     });
 
     // When receiver accepts → caller receives answer
@@ -196,9 +253,21 @@ export const authStore = createStore<IAuthState>((set, get) => ({
     // ICE candidate handling
     socket.on("ice-candidate", async (candidate) => {
       const { peerConnection } = callStore.getState();
-      if (peerConnection) {
-        await peerConnection.addIceCandidate(candidate);
+      if (!peerConnection) return;
+
+      if (!peerConnection.remoteDescription) {
+        console.log("🕒 ICE queued (remoteDescription missing)");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (!(peerConnection as any)._queuedCandidates) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (peerConnection as any)._queuedCandidates = [];
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (peerConnection as any)._queuedCandidates.push(candidate);
+        return;
       }
+
+      await peerConnection.addIceCandidate(candidate).catch(console.error);
     });
 
     // Call ended

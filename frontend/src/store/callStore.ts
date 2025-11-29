@@ -1,107 +1,222 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { create } from "zustand";
+import { createStore } from "zustand";
 
 export type TCallState = {
   isCalling: boolean;
   incomingCall: boolean;
+  inCall: boolean;
   callerId: string | null;
+  receiverId: string | null;
   peerConnection: RTCPeerConnection | null;
 
   startCall: (receiverId: string) => void;
   acceptCall: () => void;
   rejectCall: () => void;
   endCall: () => void;
+  receiveCall: (from: string) => void;
+  cancelCall: () => void;
   setPeerConnection: (data: any) => void;
   setIncomingCall: (data: any) => void;
   setCallerId: (data: any) => void;
+  setCalling: (data: any) => void;
+  setInCall: (data: any) => void;
+  setReceiverId: (data: any) => void;
 };
 
-export const callStore = create<TCallState>((set, get) => ({
-  isCalling: false,
-  incomingCall: false,
-  callerId: null,
-  peerConnection: null,
+export const callStore = createStore<TCallState>((set, get) => {
+  // -------------------------
+  // RINGTONES
+  // -------------------------
+  const incomingTone = new Audio("/liyakun.mp3");
+  const outgoingTone = new Audio("/vip.mp3");
 
-  setPeerConnection: (pc: any) => set({ peerConnection: pc }),
-  setIncomingCall: (value: any) => set({ incomingCall: value }),
-  setCallerId: (id: any) => set({ callerId: id }),
+  incomingTone.loop = true;
+  outgoingTone.loop = true;
 
-  startCall: async (receiverId) => {
-    const socket = (window as any).mainSocket;
+  let timeoutHandler: ReturnType<typeof setTimeout> | null = null;
 
-    const pc = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-    });
+  const stopAllRingtones = () => {
+    incomingTone.pause();
+    incomingTone.currentTime = 0;
 
-    set({ peerConnection: pc, isCalling: true });
+    outgoingTone.pause();
+    outgoingTone.currentTime = 0;
+  };
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-    });
+  return {
+    isCalling: false,
+    incomingCall: false,
+    inCall: false,
+    callerId: null,
+    receiverId: null,
+    peerConnection: null,
 
-    stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+    // State setters
+    setPeerConnection: (pc) => set({ peerConnection: pc }),
+    setIncomingCall: (state) => set({ incomingCall: state }),
+    setCalling: (state) => set({ isCalling: state }),
+    setInCall: (state) => set({ inCall: state }),
+    setCallerId: (id) => set({ callerId: id }),
+    setReceiverId: (id) => set({ receiverId: id }),
 
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.emit("ice-candidate", {
-          to: receiverId,
-          candidate: event.candidate,
-        });
-      }
-    };
+    // ------------------------------------------------
+    // START CALL — CALLER SIDE
+    // ------------------------------------------------
+    startCall: async (receiverId) => {
+      const socket = (window as any).mainSocket;
 
-    pc.ontrack = (event) => {
-      const audio = document.getElementById("remoteAudio") as HTMLAudioElement;
-      audio.srcObject = event.streams[0];
-      audio.play();
-    };
+      // Play outgoing ringtone
+      outgoingTone.play().catch(() => {});
 
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
+      set({ isCalling: true, receiverId });
 
-    socket.emit("call-user", { to: receiverId, offer });
-  },
+      // Create PeerConnection
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      });
 
-  acceptCall: async () => {
-    const { callerId, peerConnection } = get();
-    const socket = (window as any).mainSocket;
+      set({ peerConnection: pc });
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-    });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
 
-    stream.getTracks().forEach((t) => peerConnection?.addTrack(t, stream));
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit("ice-candidate", {
+            to: receiverId,
+            candidate: event.candidate,
+          });
+        }
+      };
 
-    const answer = await peerConnection?.createAnswer();
-    await peerConnection?.setLocalDescription(answer);
+      pc.ontrack = (event) => {
+        const audio = document.getElementById(
+          "remoteAudio"
+        ) as HTMLAudioElement;
+        audio!.srcObject = event.streams[0];
+        audio!.play().catch(() => {});
+      };
 
-    socket.emit("answer-call", { to: callerId, answer });
+      // Create WebRTC Offer
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
 
-    set({ incomingCall: false, isCalling: true });
-  },
+      socket.emit("call-user", { to: receiverId, offer });
 
-  rejectCall: () => {
-    const socket = (window as any).mainSocket;
-    const { callerId } = get();
+      // -----------------------------
+      // CALL TIMEOUT (30 seconds)
+      // -----------------------------
+      timeoutHandler = setTimeout(() => {
+        console.log("⏳ Call timeout — no answer");
+        get().cancelCall(); // auto cancel
+      }, 30000); // 30 seconds
+    },
 
-    socket.emit("end-call", { to: callerId });
+    // ------------------------------------------------
+    // ACCEPT CALL — RECEIVER SIDE
+    // ------------------------------------------------
+    acceptCall: async () => {
+      const { callerId, peerConnection } = get();
+      const socket = (window as any).mainSocket;
 
-    set({ incomingCall: false, callerId: null });
-  },
+      stopAllRingtones(); // stop incoming ringtone
+      if (timeoutHandler) clearTimeout(timeoutHandler);
 
-  endCall: () => {
-    const socket = (window as any).mainSocket;
-    const { callerId, peerConnection } = get();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      stream.getTracks().forEach((t) => peerConnection?.addTrack(t, stream));
 
-    peerConnection?.close();
+      const answer = await peerConnection?.createAnswer();
+      await peerConnection?.setLocalDescription(answer);
 
-    socket.emit("end-call", { to: callerId });
+      socket.emit("answer-call", { to: callerId, answer });
 
-    set({
-      isCalling: false,
-      incomingCall: false,
-      callerId: null,
-      peerConnection: null,
-    });
-  },
-}));
+      set({ incomingCall: false, inCall: true });
+    },
+
+    // ------------------------------------------------
+    // RECEIVER SEES INCOMING CALL
+    // ------------------------------------------------
+    receiveCall: (from) => {
+      console.log("📥 receiveCall() triggered for:", from); // <------ ADD THIS
+
+      set({ incomingCall: true, callerId: from });
+
+      incomingTone.play().catch(() => {}); // play incoming ringtone
+
+      // Also timeout after 30s
+      timeoutHandler = setTimeout(() => {
+        console.log("⏳ Receiver did not respond");
+        get().rejectCall();
+      }, 30000);
+    },
+
+    // ------------------------------------------------
+    // CANCEL CALL (CALLER BEFORE ANSWER)
+    // ------------------------------------------------
+    cancelCall: () => {
+      const socket = (window as any).mainSocket;
+      const { receiverId, peerConnection } = get();
+
+      stopAllRingtones();
+      if (timeoutHandler) clearTimeout(timeoutHandler);
+
+      peerConnection?.close();
+      socket.emit("end-call", { to: receiverId });
+
+      set({
+        isCalling: false,
+        inCall: false,
+        incomingCall: false,
+        callerId: null,
+        receiverId: null,
+        peerConnection: null,
+      });
+    },
+
+    // ------------------------------------------------
+    // REJECT CALL — RECEIVER
+    // ------------------------------------------------
+    rejectCall: () => {
+      const socket = (window as any).mainSocket;
+      const { callerId } = get();
+
+      stopAllRingtones();
+      if (timeoutHandler) clearTimeout(timeoutHandler);
+
+      socket.emit("end-call", { to: callerId });
+
+      set({
+        incomingCall: false,
+        callerId: null,
+      });
+    },
+
+    // ------------------------------------------------
+    // END CALL (WHILE IN CALL)
+    // ------------------------------------------------
+    endCall: () => {
+      const socket = (window as any).mainSocket;
+      const { callerId, receiverId, peerConnection } = get();
+
+      stopAllRingtones();
+      if (timeoutHandler) clearTimeout(timeoutHandler);
+
+      peerConnection?.close();
+
+      socket.emit("end-call", { to: callerId || receiverId });
+
+      set({
+        isCalling: false,
+        inCall: false,
+        incomingCall: false,
+        callerId: null,
+        receiverId: null,
+        peerConnection: null,
+      });
+    },
+  };
+});
