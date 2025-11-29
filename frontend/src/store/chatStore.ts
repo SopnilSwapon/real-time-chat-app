@@ -98,6 +98,5 @@ export const chatStore = createStore<IChatState>((set, get) => ({
     socket?.off("newMessage");
   },
 
-  //   todo: optimize this one later
   setSelectedUser: async (selectedUser) => set({ selectedUser }),
 }));

@@ -7,6 +7,9 @@ import SettingPage from "./pages/SettingPage";
 import ProfilePage from "./pages/ProfilePage";
 import { useAuthStore } from "./store/useAuthStore";
 import { useEffect } from "react";
+import ActiveCallModal from "./components/ActiveCallModal";
+import IncomingCallModal from "./components/IncomingCallModal";
+import CallingModal from "./components/callingModal";
 
 export default function App() {
   const { authUser, isCheckingAuth, checkAuth } = useAuthStore((s) => s);
@@ -39,6 +42,11 @@ export default function App() {
           element={authUser ? <ProfilePage /> : <Navigate to={"/login"} />}
         />
       </Routes>
+      <audio id="remoteAudio" autoPlay></audio>
+
+      <IncomingCallModal />
+      <CallingModal />
+      <ActiveCallModal />
     </div>
   );
 }

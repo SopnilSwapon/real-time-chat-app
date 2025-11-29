@@ -17,6 +17,7 @@ export default function Sidebar() {
     ? users?.filter((user) => onlineUsers?.includes(user._id))
     : users;
   if (isUsersLoading) return <SidebarSkeleton />;
+  console.log(onlineUsers, "check online usersss");
   return (
     <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200">
       <div className="border-b border-base-300 w-full flex gap-2 p-5">
@@ -33,7 +34,7 @@ export default function Sidebar() {
           />
           <span className="text-sm">Show online only</span>
         </label>
-        <span className="text-sm">({onlineUsers!.length - 1} online)</span>
+        <span className="text-sm">({onlineUsers!.length} online)</span>
       </div>
       <div className="overflow-y-auto py-3">
         {filteredUsers?.map((user) => (

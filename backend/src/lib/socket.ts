@@ -11,78 +11,78 @@ const io = new Server(server, {
       "http://localhost:5173",
       "https://real-time-chat-app-1-0-iv2t.onrender.com",
     ],
+    methods: ["GET", "POST"],
     credentials: true,
   },
 });
 
-io.engine.on("headers", (headers, req) => {
-  headers["Access-Control-Allow-Origin"] = req.headers.origin;
-  headers["Access-Control-Allow-Credentials"] = "true";
-});
-
-// online users map
+// -----------------------------
+// MULTI-SOCKET USER MAP
+// -----------------------------
 const userSocketMap: Record<string, Set<string>> = {};
 
-export function getReceiverSocketId(userId: string) {
+export function getReceiverSocketId(userId: string): string[] {
   return userSocketMap[userId] ? [...userSocketMap[userId]] : [];
 }
 
 io.on("connection", (socket) => {
-  console.log("A user connected", socket.id);
-
-  let userId: any = socket.handshake.query.userId;
-
-  // Make sure userId is a string
-  if (Array.isArray(userId)) userId = userId[0];
-
-  console.log(userId, "check user id from backend side");
+  let userId = socket.handshake.query.userId as string;
 
   if (userId) {
     if (!userSocketMap[userId]) userSocketMap[userId] = new Set();
     userSocketMap[userId].add(socket.id);
   }
 
-  console.log(
-    "userSocketMap after connect:",
-    Object.fromEntries(
-      Object.entries(userSocketMap).map(([k, v]) => [k, [...v]])
-    )
-  );
+  console.log(`User connected: ${userId} -> ${socket.id}`);
 
-  io.emit("getOnlineUsers", Object.keys(userSocketMap));
+  // -----------------------------
+  // 🌟 AUDIO CALL SIGNALING
+  // -----------------------------
 
-  // Optional manual register
-  socket.on("register", (id) => {
-    if (!id) return;
-    if (!userSocketMap[id]) userSocketMap[id] = new Set();
-    userSocketMap[id].add(socket.id);
-
-    console.log(`Registered user ${id} with socket ${socket.id}`);
-    io.emit("getOnlineUsers", Object.keys(userSocketMap));
+  // Caller sends Offer
+  socket.on("call-user", ({ to, offer }) => {
+    const targets = getReceiverSocketId(to);
+    targets.forEach((id) =>
+      io.to(id).emit("incoming-call", {
+        from: userId,
+        offer,
+      })
+    );
   });
 
-  socket.on("disconnect", () => {
-    console.log("A user disconnected", socket.id);
+  // Receiver sends Answer
+  socket.on("answer-call", ({ to, answer }) => {
+    const targets = getReceiverSocketId(to);
+    targets.forEach((id) => io.to(id).emit("call-answered", { answer }));
+  });
 
+  // ICE Candidates
+  socket.on("ice-candidate", ({ to, candidate }) => {
+    const targets = getReceiverSocketId(to);
+    targets.forEach((id) => io.to(id).emit("ice-candidate", candidate));
+  });
+
+  // Reject call
+  socket.on("reject-call", ({ to }) => {
+    const targets = getReceiverSocketId(to);
+    targets.forEach((id) => io.to(id).emit("call-rejected"));
+  });
+
+  // End call
+  socket.on("end-call", ({ to }) => {
+    const targets = getReceiverSocketId(to);
+    targets.forEach((id) => io.to(id).emit("call-ended"));
+  });
+
+  // -----------------------------
+  // Disconnect
+  // -----------------------------
+  socket.on("disconnect", () => {
     if (userId && userSocketMap[userId]) {
       userSocketMap[userId].delete(socket.id);
       if (userSocketMap[userId].size === 0) delete userSocketMap[userId];
     }
-
-    // Remove socket from any other user (if register event used)
-    for (const uid of Object.keys(userSocketMap)) {
-      userSocketMap[uid].delete(socket.id);
-      if (userSocketMap[uid].size === 0) delete userSocketMap[uid];
-    }
-
-    console.log(
-      "userSocketMap after disconnect:",
-      Object.fromEntries(
-        Object.entries(userSocketMap).map(([k, v]) => [k, [...v]])
-      )
-    );
-
-    io.emit("getOnlineUsers", Object.keys(userSocketMap));
+    console.log("User disconnected:", userId, socket.id);
   });
 });
 
