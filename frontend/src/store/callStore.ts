@@ -21,6 +21,7 @@ export type TCallState = {
   setCalling: (data: any) => void;
   setInCall: (data: any) => void;
   setReceiverId: (data: any) => void;
+  stopCallerRingtone: () => void;
 };
 
 export const callStore = createStore<TCallState>((set, get) => {
@@ -42,6 +43,10 @@ export const callStore = createStore<TCallState>((set, get) => {
     outgoingTone.pause();
     outgoingTone.currentTime = 0;
   };
+  const stopCallerRingtone = () => {
+    outgoingTone.pause();
+    outgoingTone.currentTime = 0;
+  };
 
   return {
     isCalling: false,
@@ -50,6 +55,7 @@ export const callStore = createStore<TCallState>((set, get) => {
     callerId: null,
     receiverId: null,
     peerConnection: null,
+    stopCallerRingtone,
 
     // State setters
     setPeerConnection: (pc) => set({ peerConnection: pc }),

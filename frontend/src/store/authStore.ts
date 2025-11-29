@@ -244,10 +244,18 @@ export const authStore = createStore<IAuthState>((set, get) => ({
 
     // When receiver accepts → caller receives answer
     socket.on("call-answered", async ({ answer }) => {
-      const { peerConnection } = callStore.getState();
+      const { peerConnection, stopCallerRingtone } = callStore.getState();
+
+      // stop outgoing ringtone 🚫🔔
+      stopCallerRingtone();
+
       if (peerConnection) {
         await peerConnection.setRemoteDescription(answer);
       }
+
+      // caller enters active call state
+      callStore.getState().setInCall(true);
+      callStore.getState().setCalling(false);
     });
 
     // ICE candidate handling
