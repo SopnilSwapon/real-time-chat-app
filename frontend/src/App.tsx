@@ -42,7 +42,7 @@ export default function App() {
           element={authUser ? <ProfilePage /> : <Navigate to={"/login"} />}
         />
       </Routes>
-      <audio id="remoteAudio" autoPlay></audio>
+      <audio id="remoteAudio" autoPlay playsInline></audio>
 
       <IncomingCallModal />
       <CallingModal />
